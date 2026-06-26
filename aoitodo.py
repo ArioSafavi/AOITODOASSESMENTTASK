@@ -1,7 +1,7 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog, filedialog
 import json, os, hashlib
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from PIL import Image, ImageTk
 
 
@@ -132,6 +132,7 @@ class AoiTodoApp:
         self.data = load_data()
         self.current_user = None
         self.tasks = []
+        self.templates = []
         self.filter_mode = "all"
         self.bg_image = None
         self.bg_label = None
@@ -147,18 +148,14 @@ class AoiTodoApp:
 
         frame = ttk.Frame(self.root, padding=20)
         frame.place(relx=0.5, rely=0.5, anchor="center")
-
         ttk.Label(frame, text="Aoi Todo", font=("Segoe UI", 22, "bold")).pack(pady=(0, 10))
         ttk.Label(frame, text="Login or create an account").pack(pady=(0, 15))
-
         ttk.Label(frame, text="Username:").pack(anchor="w")
         self.username_entry = ttk.Entry(frame, width=30)
         self.username_entry.pack()
-
         ttk.Label(frame, text="Password:").pack(anchor="w", pady=(10, 0))
         self.password_entry = ttk.Entry(frame, show="*", width=30)
         self.password_entry.pack()
-
         btn_row = ttk.Frame(frame)
         btn_row.pack(pady=15)
         ttk.Button(btn_row, text="Login", command=self.login).pack(side="left", padx=5)
@@ -193,18 +190,28 @@ class AoiTodoApp:
         user = self.data["users"][self.current_user]
         user["logins"].append(datetime.now().isoformat())
         self.tasks = [Task.from_dict(t) for t in user.get("tasks", [])]
+        self.templates = user.get("templates", [])
         save_data(self.data)
 
     def save_user_data(self):
         if not self.current_user:
             return
-        self.data["users"][self.current_user]["tasks"] = [t.to_dict() for t in self.tasks]
+        user = self.data["users"][self.current_user]
+        user["tasks"] = [t.to_dict() for t in self.tasks]
+        user["templates"] = self.templates
         save_data(self.data)
 
     def main_window(self):
         self.clear_root()
         apply_theme(self.root, self.theme)
         self.setup_wallpaper_background()
+
+        menubar = tk.Menu(self.root)
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Import JSON", command=self.import_json)
+        file_menu.add_command(label="Export JSON", command=self.export_json)
+        menubar.add_cascade(label="File", menu=file_menu)
+        self.root.config(menu=menubar)
 
         header_bg = "#252525" if self.theme in ("dark", "wallpaper", "watermark") else "#e0e0e0"
         header_fg = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#222"
@@ -232,6 +239,9 @@ class AoiTodoApp:
         tk.Label(sidebar, text="Actions", bg=sidebar_bg, fg=sidebar_fg,
                  font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=15, pady=(15, 5))
         ttk.Button(sidebar, text="Add Task", command=self.add_task_dialog).pack(fill="x", padx=10, pady=2)
+        ttk.Button(sidebar, text="Analytics", command=self.show_analytics).pack(fill="x", padx=10, pady=2)
+        ttk.Button(sidebar, text="Advanced Analytics", command=self.open_advanced_analytics).pack(fill="x", padx=10, pady=2)
+        ttk.Button(sidebar, text="Pomodoro", command=self.pomodoro_dialog).pack(fill="x", padx=10, pady=2)
 
         main = ttk.Frame(self.root)
         main.pack(side="left", fill="both", expand=True, padx=10, pady=10)
@@ -299,6 +309,7 @@ class AoiTodoApp:
         self.save_user_data()
         self.current_user = None
         self.tasks = []
+        self.templates = []
         self.login_window()
 
     def clear_root(self):
@@ -316,8 +327,7 @@ class AoiTodoApp:
         for p in parts:
             if ":" in p:
                 key, val = p.split(":", 1)
-                key = key.lower()
-                val = val.lower()
+                key, val = key.lower(), val.lower()
                 if key == "priority":
                     try:
                         if task.priority != int(val):
@@ -328,12 +338,9 @@ class AoiTodoApp:
                     if not any(val in t.lower() for t in task.tags):
                         return False
                 elif key == "due":
-                    if val == "today":
-                        if task.due_date != date.today().isoformat():
-                            return False
-                    else:
-                        if task.due_date != val:
-                            return False
+                    check = date.today().isoformat() if val == "today" else val
+                    if task.due_date != check:
+                        return False
         words = [w for w in parts if ":" not in w]
         for w in words:
             if w.lower() not in task.title.lower() and not any(w.lower() in t.lower() for t in task.tags):
@@ -370,7 +377,6 @@ class AoiTodoApp:
         base_title = template.get("title", "") if template else ""
         base_priority = template.get("priority", 2) if template else 2
         base_tags = ", ".join(template.get("tags", [])) if template else ""
-
         title = simpledialog.askstring("Task", "Task title:", initialvalue=base_title)
         if not title:
             return
@@ -437,6 +443,176 @@ class AoiTodoApp:
         self.refresh_task_list()
         self.show_conquest_popup(mode="normal")
 
+    def show_analytics(self):
+        completed = [t for t in self.tasks if t.completed and t.completed_at]
+        if not completed:
+            messagebox.showinfo("Analytics", "No completed tasks yet.")
+            return
+        durations = []
+        for t in completed:
+            try:
+                start = datetime.fromisoformat(t.created_at)
+                end = datetime.fromisoformat(t.completed_at)
+                durations.append((end - start).total_seconds() / 3600)
+            except Exception:
+                continue
+        avg_hours = sum(durations) / len(durations) if durations else 0
+        login_count = len(self.data["users"][self.current_user].get("logins", []))
+        messagebox.showinfo("Analytics",
+            f"Completed tasks: {len(completed)}\n"
+            f"Average completion time: {avg_hours:.2f} hours\n"
+            f"Total logins: {login_count}")
+
+    def open_advanced_analytics(self, event=None):
+        win = tk.Toplevel(self.root)
+        win.title("Advanced Analytics")
+        apply_theme(win, self.theme)
+        win.geometry("800x500")
+
+        canvas_bg = "#1e1e1e" if self.theme in ("dark", "wallpaper", "watermark") else "#ffffff"
+        canvas = tk.Canvas(win, bg=canvas_bg)
+        canvas.pack(fill="both", expand=True)
+
+        completed = [t for t in self.tasks if t.completed and t.completed_at]
+        text_color = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#000000"
+
+        if not completed:
+            canvas.create_text(400, 250, text="No completed tasks yet.", fill=text_color, font=("Segoe UI", 14))
+            return
+
+        today = date.today()
+        counts_by_day = {}
+        for t in completed:
+            try:
+                d = datetime.fromisoformat(t.completed_at).date()
+                if (today - d).days <= 30:
+                    counts_by_day[d] = counts_by_day.get(d, 0) + 1
+            except Exception:
+                continue
+
+        max_count = max(counts_by_day.values()) if counts_by_day else 1
+        x0, y0, cell = 50, 50, 18
+        for i in range(5):
+            for j in range(7):
+                d = today - timedelta(days=i * 7 + j)
+                c = counts_by_day.get(d, 0)
+                intensity = int(255 * (1 - c / max_count)) if max_count else 255
+                color = f"#{intensity:02x}{255 - intensity:02x}80"
+                canvas.create_rectangle(x0 + j * cell, y0 + i * cell,
+                                        x0 + (j + 1) * cell, y0 + (i + 1) * cell,
+                                        fill=color, outline="#333333")
+        canvas.create_text(x0, y0 - 15, anchor="w", text="Completion heatmap (last 30 days)",
+                           fill=text_color, font=("Segoe UI", 10, "bold"))
+
+        days_done = set()
+        for t in completed:
+            try:
+                days_done.add(datetime.fromisoformat(t.completed_at).date())
+            except Exception:
+                continue
+        streak, d = 0, today
+        while d in days_done:
+            streak += 1
+            d -= timedelta(days=1)
+        canvas.create_text(450, 60, text=f"Current streak: {streak} day(s)",
+                           fill=text_color, font=("Segoe UI", 11, "bold"))
+
+        tag_counts = {}
+        for t in completed:
+            for tag in t.tags:
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        if tag_counts:
+            x_start, y_start = 450, 100
+            bar_w, bar_h = 200, 18
+            max_tc = max(tag_counts.values())
+            for i, (tag, cnt) in enumerate(tag_counts.items()):
+                length = int(bar_w * (cnt / max_tc)) if max_tc else 0
+                canvas.create_rectangle(x_start, y_start + i * (bar_h + 4),
+                                        x_start + length, y_start + i * (bar_h + 4) + bar_h,
+                                        fill="#3a7bd5", outline="")
+                canvas.create_text(x_start - 5, y_start + i * (bar_h + 4) + bar_h / 2,
+                                   anchor="e", text=tag, fill=text_color, font=("Segoe UI", 9))
+            canvas.create_text(x_start, y_start - 15, anchor="w", text="Completed tasks per tag",
+                               fill=text_color, font=("Segoe UI", 10, "bold"))
+
+        durations = []
+        for t in completed:
+            try:
+                start = datetime.fromisoformat(t.created_at)
+                end = datetime.fromisoformat(t.completed_at)
+                durations.append((end - start).total_seconds() / 3600)
+            except Exception:
+                continue
+        avg_hours = sum(durations) / len(durations) if durations else 0
+        canvas.create_text(50, 180, text=f"Average completion time: {avg_hours:.2f} hours",
+                           anchor="w", fill=text_color, font=("Segoe UI", 11, "bold"))
+
+    def pomodoro_dialog(self):
+        work = simpledialog.askinteger("Pomodoro", "Work minutes:", minvalue=1, maxvalue=120, initialvalue=25)
+        if work is None:
+            return
+        rest = simpledialog.askinteger("Pomodoro", "Break minutes:", minvalue=1, maxvalue=60, initialvalue=5)
+        if rest is None:
+            return
+        self.start_pomodoro(work, rest)
+
+    def start_pomodoro(self, work_minutes, break_minutes):
+        win = tk.Toplevel(self.root)
+        win.title("Pomodoro Timer")
+        bg = "#1e1e1e" if self.theme in ("dark", "wallpaper", "watermark") else "#f5f5f5"
+        fg = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#222"
+        win.configure(bg=bg)
+        label = tk.Label(win, text="", font=("Segoe UI", 20), bg=bg, fg=fg)
+        label.pack(padx=20, pady=20)
+        state = {"phase": "work", "remaining": work_minutes * 60}
+
+        def tick():
+            r = state["remaining"]
+            label.config(text=f"{state['phase'].capitalize()} — {r // 60:02d}:{r % 60:02d}")
+            if r <= 0:
+                if state["phase"] == "work":
+                    messagebox.showinfo("Pomodoro", "Work session done! Break time.")
+                    state["phase"] = "break"
+                    state["remaining"] = break_minutes * 60
+                else:
+                    messagebox.showinfo("Pomodoro", "Break finished!")
+                    win.destroy()
+                    return
+            else:
+                state["remaining"] -= 1
+            win.after(1000, tick)
+
+        tick()
+
+    def export_json(self):
+        if not self.tasks:
+            messagebox.showinfo("Export", "No tasks to export.")
+            return
+        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump([t.to_dict() for t in self.tasks], f, indent=2)
+            messagebox.showinfo("Export", "Tasks exported successfully.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export.\n{e}")
+
+    def import_json(self):
+        path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            imported = [Task.from_dict(d) for d in data]
+            self.tasks.extend(imported)
+            self.save_user_data()
+            self.refresh_task_list()
+            messagebox.showinfo("Import", f"Imported {len(imported)} tasks.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to import.\n{e}")
+
     def check_easter_egg(self, task):
         t = task.title.strip().upper()
         if t == "AOITODO" and task.due_date == "2024-09-23":
@@ -454,6 +630,8 @@ class AoiTodoApp:
                 messagebox.showerror("Error", f"Easter egg image not found.\n{e}")
         if t == "VILTRUMITE":
             self.show_conquest_popup(mode="jumpscare")
+        if t == "BLOOD":
+            self.flash_blood_theme()
         if t == "CONQUEST":
             self.show_conquest_popup(mode="special")
         if t == "AOT":
@@ -461,11 +639,8 @@ class AoiTodoApp:
 
     def show_conquest_popup(self, mode="normal"):
         img_path = CONQUEST_IMG
-        if mode == "special" and os.path.exists(CONQUEST_IMG):
-            img_path = CONQUEST_IMG
         if mode == "jumpscare" and os.path.exists(CONQUEST_IMG):
             img_path = CONQUEST_IMG
-
         win = tk.Toplevel(self.root)
         win.title("Conquest")
         win.overrideredirect(True)
@@ -475,7 +650,6 @@ class AoiTodoApp:
         y = (win.winfo_screenheight() - h) // 2
         win.geometry(f"{w}x{h}+{x}+{y}")
         win.configure(bg="#000000")
-
         try:
             img = Image.open(img_path).resize((350, 350))
             img_tk = ImageTk.PhotoImage(img)
@@ -486,10 +660,7 @@ class AoiTodoApp:
             tk.Label(win, text="CONQUEST", fg="white", bg="#000000",
                      font=("Segoe UI", 20, "bold")).pack(expand=True)
 
-
-
         win.after(5000, win.destroy)
-
 
 
     def flash_aot(self):

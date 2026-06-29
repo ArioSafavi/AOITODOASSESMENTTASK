@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 
 DATA_FILE = "aoi_data.enc"
 SECRET_KEY = b"AoiTodoSuperSecretKey_ChangeMe"
+
 CONQUEST_IMG = "conquest.png"
 AOT_FLASH_IMG = "aot_flash.png"
 
@@ -49,23 +50,31 @@ def load_data():
 
 
 def save_data(data):
-    enc = encrypt(json.dumps(data))
+    raw = json.dumps(data)
+    enc = encrypt(raw)
     with open(DATA_FILE, "wb") as f:
         f.write(enc)
 
 
-def apply_theme(root, theme):
+def apply_theme(root, theme: str):
     style = ttk.Style(root)
-    if theme in ("dark", "wallpaper", "watermark"):
+    if theme in ("dark", "wallpaper"):
         root.configure(bg="#1e1e1e")
         style.theme_use("clam")
         style.configure("TFrame", background="#1e1e1e")
         style.configure("TLabel", background="#1e1e1e", foreground="white", font=("Segoe UI", 11))
-        style.configure("TButton", background="#3a3a3a", foreground="white", font=("Segoe UI", 11), padding=6)
+        style.configure("TButton", background="#3a3a3a", foreground="white",
+                        font=("Segoe UI", 11), padding=6)
         style.map("TButton", background=[("active", "#505050")])
-        style.configure("Treeview", background="#2b2b2b", foreground="white",
-                        fieldbackground="#2b2b2b", rowheight=26, font=("Segoe UI", 10))
-        style.configure("Treeview.Heading", background="#3a3a3a", foreground="white",
+        style.configure("Treeview",
+                        background="#2b2b2b",
+                        foreground="white",
+                        fieldbackground="#2b2b2b",
+                        rowheight=26,
+                        font=("Segoe UI", 10))
+        style.configure("Treeview.Heading",
+                        background="#3a3a3a",
+                        foreground="white",
                         font=("Segoe UI", 10, "bold"))
         style.map("Treeview", background=[("selected", "#5a5a5a")])
     else:
@@ -73,18 +82,26 @@ def apply_theme(root, theme):
         style.theme_use("clam")
         style.configure("TFrame", background="#f5f5f5")
         style.configure("TLabel", background="#f5f5f5", foreground="#222", font=("Segoe UI", 11))
-        style.configure("TButton", background="#ffffff", foreground="#222", font=("Segoe UI", 11), padding=6)
+        style.configure("TButton", background="#ffffff", foreground="#222",
+                        font=("Segoe UI", 11), padding=6)
         style.map("TButton", background=[("active", "#e0e0e0")])
-        style.configure("Treeview", background="#ffffff", foreground="#222",
-                        fieldbackground="#ffffff", rowheight=26, font=("Segoe UI", 10))
-        style.configure("Treeview.Heading", background="#e0e0e0", foreground="#222",
+        style.configure("Treeview",
+                        background="#ffffff",
+                        foreground="#222",
+                        fieldbackground="#ffffff",
+                        rowheight=26,
+                        font=("Segoe UI", 10))
+        style.configure("Treeview.Heading",
+                        background="#e0e0e0",
+                        foreground="#222",
                         font=("Segoe UI", 10, "bold"))
         style.map("Treeview", background=[("selected", "#c0ddff")])
 
 
 class Task:
     def __init__(self, title, due_date=None, priority=1, tags=None, completed=False,
-                 created_at=None, completed_at=None, notified=False, time_block=None):
+                 created_at=None, completed_at=None, notified=False,
+                 time_block=None):
         self.title = title
         self.due_date = due_date
         self.priority = priority
@@ -111,17 +128,22 @@ class Task:
     @staticmethod
     def from_dict(d):
         return Task(
-            d["title"], d.get("due_date"), d.get("priority", 1),
-            d.get("tags", []), d.get("completed", False),
-            d.get("created_at"), d.get("completed_at"),
-            d.get("notified", False), d.get("time_block"),
+            d["title"],
+            d.get("due_date"),
+            d.get("priority", 1),
+            d.get("tags", []),
+            d.get("completed", False),
+            d.get("created_at"),
+            d.get("completed_at"),
+            d.get("notified", False),
+            d.get("time_block"),
         )
 
 
 class AoiTodoApp:
     def __init__(self, root):
         self.root = root
-        self.themes = ["dark", "light", "wallpaper", "watermark"]
+        self.themes = ["dark", "light", "wallpaper"]
         self.theme_index = 0
         self.theme = self.themes[self.theme_index]
         apply_theme(root, self.theme)
@@ -134,10 +156,9 @@ class AoiTodoApp:
         self.tasks = []
         self.templates = []
         self.filter_mode = "all"
+
         self.bg_image = None
         self.bg_label = None
-        self.watermark_image = None
-        self.watermark_label = None
 
         self.login_window()
 
@@ -148,18 +169,23 @@ class AoiTodoApp:
 
         frame = ttk.Frame(self.root, padding=20)
         frame.place(relx=0.5, rely=0.5, anchor="center")
+
         ttk.Label(frame, text="Aoi Todo", font=("Segoe UI", 22, "bold")).pack(pady=(0, 10))
         ttk.Label(frame, text="Login or create an account").pack(pady=(0, 15))
+
         ttk.Label(frame, text="Username:").pack(anchor="w")
         self.username_entry = ttk.Entry(frame, width=30)
         self.username_entry.pack()
+
         ttk.Label(frame, text="Password:").pack(anchor="w", pady=(10, 0))
         self.password_entry = ttk.Entry(frame, show="*", width=30)
         self.password_entry.pack()
+
         btn_row = ttk.Frame(frame)
         btn_row.pack(pady=15)
         ttk.Button(btn_row, text="Login", command=self.login).pack(side="left", padx=5)
         ttk.Button(btn_row, text="Register", command=self.register).pack(side="left", padx=5)
+
         ttk.Button(frame, text=f"Theme: {self.theme}", command=self.toggle_theme).pack()
 
     def login(self):
@@ -182,7 +208,12 @@ class AoiTodoApp:
         if username in self.data["users"]:
             messagebox.showerror("Error", "User already exists")
             return
-        self.data["users"][username] = {"password": password, "tasks": [], "logins": [], "templates": []}
+        self.data["users"][username] = {
+            "password": password,
+            "tasks": [],
+            "logins": [],
+            "templates": []
+        }
         save_data(self.data)
         messagebox.showinfo("Success", "Account created. You can now log in.")
 
@@ -213,58 +244,81 @@ class AoiTodoApp:
         menubar.add_cascade(label="File", menu=file_menu)
         self.root.config(menu=menubar)
 
-        header_bg = "#252525" if self.theme in ("dark", "wallpaper", "watermark") else "#e0e0e0"
-        header_fg = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#222"
+        header_bg = "#252525" if self.theme in ("dark", "wallpaper") else "#e0e0e0"
+        header_fg = "white" if self.theme in ("dark", "wallpaper") else "#222"
+
         header = tk.Frame(self.root, bg=header_bg, height=50)
         header.pack(fill="x")
-        tk.Label(header, text="Aoi Todo", bg=header_bg, fg=header_fg,
-                 font=("Segoe UI", 16, "bold")).pack(side="left", padx=15)
-        tk.Label(header, text=self.current_user, bg=header_bg,
-                 fg="#bbb" if self.theme in ("dark", "wallpaper", "watermark") else "#555",
-                 font=("Segoe UI", 10)).pack(side="left")
+
+        tk.Label(header,
+                 text="Aoi Todo",
+                 bg=header_bg,
+                 fg=header_fg,
+                 font=("Segoe UI", 16, "bold")
+                 ).pack(side="left", padx=15)
+
+        tk.Label(header,
+                 text=f"{self.current_user}",
+                 bg=header_bg,
+                 fg="#bbbbbb" if self.theme in ("dark", "wallpaper") else "#555",
+                 font=("Segoe UI", 10)
+                 ).pack(side="left")
+
         ttk.Button(header, text=f"Theme: {self.theme}", command=self.toggle_theme).pack(side="right", padx=5)
         ttk.Button(header, text="Logout", command=self.logout).pack(side="right", padx=5)
 
-        sidebar_bg = "#202020" if self.theme in ("dark", "wallpaper", "watermark") else "#f0f0f0"
-        sidebar_fg = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#222"
+        sidebar_bg = "#202020" if self.theme in ("dark", "wallpaper") else "#f0f0f0"
+        sidebar_fg = "white" if self.theme in ("dark", "wallpaper") else "#222"
+
         sidebar = tk.Frame(self.root, bg=sidebar_bg, width=220)
         sidebar.pack(side="left", fill="y")
 
-        tk.Label(sidebar, text="Views", bg=sidebar_bg, fg=sidebar_fg,
-                 font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=15, pady=(15, 5))
+        tk.Label(sidebar,
+                 text="Views",
+                 bg=sidebar_bg,
+                 fg=sidebar_fg,
+                 font=("Segoe UI", 11, "bold")
+                 ).pack(anchor="w", padx=15, pady=(15, 5))
+
         ttk.Button(sidebar, text="All tasks", command=lambda: self.set_filter("all")).pack(fill="x", padx=10, pady=2)
         ttk.Button(sidebar, text="Today", command=lambda: self.set_filter("today")).pack(fill="x", padx=10, pady=2)
         ttk.Button(sidebar, text="Completed", command=lambda: self.set_filter("completed")).pack(fill="x", padx=10, pady=2)
 
-        tk.Label(sidebar, text="Actions", bg=sidebar_bg, fg=sidebar_fg,
-                 font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=15, pady=(15, 5))
+        tk.Label(sidebar,
+                 text="Actions",
+                 bg=sidebar_bg,
+                 fg=sidebar_fg,
+                 font=("Segoe UI", 11, "bold")
+                 ).pack(anchor="w", padx=15, pady=(15, 5))
+
         ttk.Button(sidebar, text="Add Task", command=self.add_task_dialog).pack(fill="x", padx=10, pady=2)
+        ttk.Button(sidebar, text="Templates", command=self.open_templates_window).pack(fill="x", padx=10, pady=2)
         ttk.Button(sidebar, text="Analytics", command=self.show_analytics).pack(fill="x", padx=10, pady=2)
-        ttk.Button(sidebar, text="Advanced Analytics", command=self.open_advanced_analytics).pack(fill="x", padx=10, pady=2)
         ttk.Button(sidebar, text="Pomodoro", command=self.pomodoro_dialog).pack(fill="x", padx=10, pady=2)
 
         main = ttk.Frame(self.root)
         main.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-        if self.theme == "watermark":
-            self.apply_watermark(main)
 
         search_frame = ttk.Frame(main)
         search_frame.pack(fill="x", pady=(0, 5))
+
         ttk.Label(search_frame, text="Search / Filter:").pack(side="left")
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *args: self.refresh_task_list())
         self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
+
         ttk.Button(search_frame, text="Edit", command=self.edit_task_dialog).pack(side="left", padx=2)
         ttk.Button(search_frame, text="Delete", command=self.delete_task).pack(side="left", padx=2)
         ttk.Button(search_frame, text="Complete", command=self.mark_complete).pack(side="left", padx=2)
 
-        cols = ("title", "due", "priority", "tags", "status")
-        self.tree = ttk.Treeview(main, columns=cols, show="headings")
-        for c in cols:
-            self.tree.heading(c, text=c.capitalize())
+        columns = ("title", "due", "priority", "tags", "status")
+        self.tree = ttk.Treeview(main, columns=columns, show="headings")
+        for col in columns:
+            self.tree.heading(col, text=col.capitalize())
         self.tree.pack(fill="both", expand=True)
+
         self.refresh_task_list()
 
     def setup_wallpaper_background(self):
@@ -284,20 +338,9 @@ class AoiTodoApp:
             except Exception:
                 self.bg_label = None
 
-    def apply_watermark(self, parent):
-        try:
-            img = Image.open("todo.png").convert("RGBA")
-            img = img.resize((300, 300))
-            img.putalpha(80)
-            self.watermark_image = ImageTk.PhotoImage(img)
-            self.watermark_label = tk.Label(parent, image=self.watermark_image,
-                                            bg=parent.cget("background"), borderwidth=0, highlightthickness=0)
-            self.watermark_label.place(relx=0.5, rely=0.5, anchor="center")
-            self.watermark_label.lower()
-        except Exception as e:
-            print("Watermark failed:", e)
 
-    def toggle_theme(self):
+
+    def toggle_theme(self, event=None):
         self.theme_index = (self.theme_index + 1) % len(self.themes)
         self.theme = self.themes[self.theme_index]
         if self.current_user:
@@ -316,7 +359,6 @@ class AoiTodoApp:
         for w in self.root.winfo_children():
             w.destroy()
         self.bg_label = None
-        self.watermark_label = None
 
     def set_filter(self, mode):
         self.filter_mode = mode
@@ -327,7 +369,8 @@ class AoiTodoApp:
         for p in parts:
             if ":" in p:
                 key, val = p.split(":", 1)
-                key, val = key.lower(), val.lower()
+                key = key.lower()
+                val = val.lower()
                 if key == "priority":
                     try:
                         if task.priority != int(val):
@@ -338,9 +381,12 @@ class AoiTodoApp:
                     if not any(val in t.lower() for t in task.tags):
                         return False
                 elif key == "due":
-                    check = date.today().isoformat() if val == "today" else val
-                    if task.due_date != check:
-                        return False
+                    if val == "today":
+                        if task.due_date != date.today().isoformat():
+                            return False
+                    else:
+                        if task.due_date != val:
+                            return False
         words = [w for w in parts if ":" not in w]
         for w in words:
             if w.lower() not in task.title.lower() and not any(w.lower() in t.lower() for t in task.tags):
@@ -354,52 +400,69 @@ class AoiTodoApp:
         for i in self.tree.get_children():
             self.tree.delete(i)
 
-        def passes(t):
+        def passes_filter(t: Task):
+            if self.filter_mode == "all":
+                return True
             if self.filter_mode == "today":
+                if not t.due_date:
+                    return False
                 return t.due_date == date.today().isoformat()
             if self.filter_mode == "completed":
                 return t.completed
             return True
 
-        for t in sorted(self.tasks, key=lambda x: (x.completed, x.priority, x.due_date or "9999-12-31")):
-            if not passes(t):
+        sorted_tasks = sorted(self.tasks, key=lambda t: (t.completed, t.priority, t.due_date or "9999-12-31"))
+        for t in sorted_tasks:
+            if not passes_filter(t):
                 continue
-            if query and not self.parse_simple_filters(query, t):
-                continue
+            if query:
+                if not self.parse_simple_filters(query, t):
+                    continue
+            status = "Done" if t.completed else "Pending"
+            tags_str = ", ".join(t.tags)
             tb = ""
             if t.time_block:
                 tb = f"{t.time_block.get('date','')} {t.time_block.get('time','')}"
-            self.tree.insert("", "end", values=(t.title, t.due_date or "", t.priority,
-                                                ", ".join(t.tags),
-                                                "Done" if t.completed else "Pending", tb))
+            self.tree.insert("", "end",
+                             values=(t.title, t.due_date or "", t.priority, tags_str, status, tb))
 
     def add_task_dialog(self, template=None):
-        base_title = template.get("title", "") if template else ""
-        base_priority = template.get("priority", 2) if template else 2
-        base_tags = ", ".join(template.get("tags", [])) if template else ""
+        if template:
+            base_title = template.get("title", "")
+            base_priority = template.get("priority", 2)
+            base_tags = ", ".join(template.get("tags", []))
+        else:
+            base_title = ""
+            base_priority = 2
+            base_tags = ""
+
         title = simpledialog.askstring("Task", "Task title:", initialvalue=base_title)
         if not title:
             return
-        due = simpledialog.askstring("Due date", "YYYY-MM-DD or blank:") or None
-        priority = simpledialog.askinteger("Priority", "1=High 3=Low:", minvalue=1, maxvalue=3, initialvalue=base_priority)
+        due = simpledialog.askstring("Due date", "YYYY-MM-DD or blank:", initialvalue="")
+        if due == "":
+            due = None
+        priority = simpledialog.askinteger("Priority", "1=High, 3=Low:",
+                                           minvalue=1, maxvalue=3,
+                                           initialvalue=base_priority)
         if priority is None:
             priority = base_priority
         tags_str = simpledialog.askstring("Tags", "Comma separated tags:", initialvalue=base_tags) or ""
         tags = [t.strip() for t in tags_str.split(",") if t.strip()]
-        task = Task(title, due or None, priority, tags)
-        self.tasks.append(task)
+        new_task = Task(title, due, priority, tags)
+        self.tasks.append(new_task)
         self.save_user_data()
         self.refresh_task_list()
-        self.check_easter_egg(task)
+        self.check_easter_egg(new_task)
 
     def get_selected_task(self):
         sel = self.tree.selection()
         if not sel:
             messagebox.showerror("Error", "No task selected")
             return None
-        vals = self.tree.item(sel[0], "values")
+        values = self.tree.item(sel[0], "values")
         for t in self.tasks:
-            if t.title == vals[0] and (t.due_date or "") == vals[1]:
+            if t.title == values[0] and (t.due_date or "") == values[1]:
                 return t
         return None
 
@@ -411,13 +474,16 @@ class AoiTodoApp:
         if not title:
             return
         due = simpledialog.askstring("Due date", "YYYY-MM-DD or blank:", initialvalue=task.due_date or "")
-        priority = simpledialog.askinteger("Priority", "1=High 3=Low:", initialvalue=task.priority, minvalue=1, maxvalue=3)
+        if due == "":
+            due = None
+        priority = simpledialog.askinteger("Priority", "1=High, 3=Low:",
+                                           initialvalue=task.priority, minvalue=1, maxvalue=3)
         if priority is None:
             priority = task.priority
-        tags_str = simpledialog.askstring("Tags", "Comma separated tags:", initialvalue=", ".join(task.tags)) or ""
+        tags_str = simpledialog.askstring("Tags", "Comma separated tags:", initialvalue=", ".join(task.tags))
         tags = [t.strip() for t in tags_str.split(",") if t.strip()]
         task.title = title
-        task.due_date = due or None
+        task.due_date = due
         task.priority = priority
         task.tags = tags
         self.save_user_data()
@@ -428,7 +494,7 @@ class AoiTodoApp:
         task = self.get_selected_task()
         if not task:
             return
-        if messagebox.askyesno("Delete", f"Delete '{task.title}'?"):
+        if messagebox.askyesno("Delete", f"Delete task '{task.title}'?"):
             self.tasks.remove(task)
             self.save_user_data()
             self.refresh_task_list()
@@ -441,7 +507,7 @@ class AoiTodoApp:
         task.completed_at = datetime.now().isoformat()
         self.save_user_data()
         self.refresh_task_list()
-        self.show_conquest_popup(mode="normal")
+        self.show_conquest_popup()
 
     def show_analytics(self):
         completed = [t for t in self.tasks if t.completed and t.completed_at]
@@ -457,95 +523,15 @@ class AoiTodoApp:
             except Exception:
                 continue
         avg_hours = sum(durations) / len(durations) if durations else 0
-        login_count = len(self.data["users"][self.current_user].get("logins", []))
-        messagebox.showinfo("Analytics",
+        user = self.data["users"][self.current_user]
+        login_count = len(user.get("logins", []))
+        messagebox.showinfo(
+            "Analytics",
             f"Completed tasks: {len(completed)}\n"
             f"Average completion time: {avg_hours:.2f} hours\n"
-            f"Total logins: {login_count}")
+            f"Total logins: {login_count}"
+        )
 
-    def open_advanced_analytics(self, event=None):
-        win = tk.Toplevel(self.root)
-        win.title("Advanced Analytics")
-        apply_theme(win, self.theme)
-        win.geometry("800x500")
-
-        canvas_bg = "#1e1e1e" if self.theme in ("dark", "wallpaper", "watermark") else "#ffffff"
-        canvas = tk.Canvas(win, bg=canvas_bg)
-        canvas.pack(fill="both", expand=True)
-
-        completed = [t for t in self.tasks if t.completed and t.completed_at]
-        text_color = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#000000"
-
-        if not completed:
-            canvas.create_text(400, 250, text="No completed tasks yet.", fill=text_color, font=("Segoe UI", 14))
-            return
-
-        today = date.today()
-        counts_by_day = {}
-        for t in completed:
-            try:
-                d = datetime.fromisoformat(t.completed_at).date()
-                if (today - d).days <= 30:
-                    counts_by_day[d] = counts_by_day.get(d, 0) + 1
-            except Exception:
-                continue
-
-        max_count = max(counts_by_day.values()) if counts_by_day else 1
-        x0, y0, cell = 50, 50, 18
-        for i in range(5):
-            for j in range(7):
-                d = today - timedelta(days=i * 7 + j)
-                c = counts_by_day.get(d, 0)
-                intensity = int(255 * (1 - c / max_count)) if max_count else 255
-                color = f"#{intensity:02x}{255 - intensity:02x}80"
-                canvas.create_rectangle(x0 + j * cell, y0 + i * cell,
-                                        x0 + (j + 1) * cell, y0 + (i + 1) * cell,
-                                        fill=color, outline="#333333")
-        canvas.create_text(x0, y0 - 15, anchor="w", text="Completion heatmap (last 30 days)",
-                           fill=text_color, font=("Segoe UI", 10, "bold"))
-
-        days_done = set()
-        for t in completed:
-            try:
-                days_done.add(datetime.fromisoformat(t.completed_at).date())
-            except Exception:
-                continue
-        streak, d = 0, today
-        while d in days_done:
-            streak += 1
-            d -= timedelta(days=1)
-        canvas.create_text(450, 60, text=f"Current streak: {streak} day(s)",
-                           fill=text_color, font=("Segoe UI", 11, "bold"))
-
-        tag_counts = {}
-        for t in completed:
-            for tag in t.tags:
-                tag_counts[tag] = tag_counts.get(tag, 0) + 1
-        if tag_counts:
-            x_start, y_start = 450, 100
-            bar_w, bar_h = 200, 18
-            max_tc = max(tag_counts.values())
-            for i, (tag, cnt) in enumerate(tag_counts.items()):
-                length = int(bar_w * (cnt / max_tc)) if max_tc else 0
-                canvas.create_rectangle(x_start, y_start + i * (bar_h + 4),
-                                        x_start + length, y_start + i * (bar_h + 4) + bar_h,
-                                        fill="#3a7bd5", outline="")
-                canvas.create_text(x_start - 5, y_start + i * (bar_h + 4) + bar_h / 2,
-                                   anchor="e", text=tag, fill=text_color, font=("Segoe UI", 9))
-            canvas.create_text(x_start, y_start - 15, anchor="w", text="Completed tasks per tag",
-                               fill=text_color, font=("Segoe UI", 10, "bold"))
-
-        durations = []
-        for t in completed:
-            try:
-                start = datetime.fromisoformat(t.created_at)
-                end = datetime.fromisoformat(t.completed_at)
-                durations.append((end - start).total_seconds() / 3600)
-            except Exception:
-                continue
-        avg_hours = sum(durations) / len(durations) if durations else 0
-        canvas.create_text(50, 180, text=f"Average completion time: {avg_hours:.2f} hours",
-                           anchor="w", fill=text_color, font=("Segoe UI", 11, "bold"))
 
     def pomodoro_dialog(self):
         work = simpledialog.askinteger("Pomodoro", "Work minutes:", minvalue=1, maxvalue=120, initialvalue=25)
@@ -559,16 +545,20 @@ class AoiTodoApp:
     def start_pomodoro(self, work_minutes, break_minutes):
         win = tk.Toplevel(self.root)
         win.title("Pomodoro Timer")
-        bg = "#1e1e1e" if self.theme in ("dark", "wallpaper", "watermark") else "#f5f5f5"
-        fg = "white" if self.theme in ("dark", "wallpaper", "watermark") else "#222"
+        bg = "#1e1e1e" if self.theme in ("dark", "wallpaper") else "#f5f5f5"
+        fg = "white" if self.theme in ("dark", "wallpaper") else "#222"
         win.configure(bg=bg)
+
         label = tk.Label(win, text="", font=("Segoe UI", 20), bg=bg, fg=fg)
         label.pack(padx=20, pady=20)
+
         state = {"phase": "work", "remaining": work_minutes * 60}
 
         def tick():
             r = state["remaining"]
-            label.config(text=f"{state['phase'].capitalize()} — {r // 60:02d}:{r % 60:02d}")
+            mins = r // 60
+            secs = r % 60
+            label.config(text=f"{state['phase'].capitalize()} — {mins:02d}:{secs:02d}")
             if r <= 0:
                 if state["phase"] == "work":
                     messagebox.showinfo("Pomodoro", "Work session done! Break time.")
@@ -588,12 +578,14 @@ class AoiTodoApp:
         if not self.tasks:
             messagebox.showinfo("Export", "No tasks to export.")
             return
-        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        path = filedialog.asksaveasfilename(defaultextension=".json",
+                                            filetypes=[("JSON files", "*.json")])
         if not path:
             return
+        data = [t.to_dict() for t in self.tasks]
         try:
             with open(path, "w", encoding="utf-8") as f:
-                json.dump([t.to_dict() for t in self.tasks], f, indent=2)
+                json.dump(data, f, indent=2)
             messagebox.showinfo("Export", "Tasks exported successfully.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to export.\n{e}")
@@ -613,52 +605,170 @@ class AoiTodoApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to import.\n{e}")
 
+    def open_templates_window(self):
+        win = tk.Toplevel(self.root)
+        win.title("Task Templates")
+        apply_theme(win, self.theme)
+        win.geometry("400x350")
+
+        frame = ttk.Frame(win)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.template_listbox = tk.Listbox(frame)
+        self.template_listbox.pack(fill="both", expand=True)
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill="x", pady=5)
+
+        ttk.Button(btn_frame, text="Add", command=self.add_template).pack(side="left", padx=2)
+        ttk.Button(btn_frame, text="Edit", command=self.edit_template).pack(side="left", padx=2)
+        ttk.Button(btn_frame, text="Delete", command=self.delete_template).pack(side="left", padx=2)
+        ttk.Button(btn_frame, text="Use", command=self.use_template).pack(side="right", padx=2)
+
+        self.refresh_template_listbox()
+
+        if not self.templates:
+            self.templates.extend([
+                {"title": "School assignment", "tags": ["school"], "priority": 2},
+                {"title": "Workout routine", "tags": ["health"], "priority": 2},
+                {"title": "Daily review", "tags": ["reflection"], "priority": 1},
+            ])
+            self.save_user_data()
+            self.refresh_template_listbox()
+
+    def refresh_template_listbox(self):
+        if not hasattr(self, "template_listbox"):
+            return
+        self.template_listbox.delete(0, "end")
+        for t in self.templates:
+            title = t.get("title", "Untitled")
+            tags = ", ".join(t.get("tags", []))
+            pr = t.get("priority", 2)
+            self.template_listbox.insert("end", f"{title} [p{pr}] ({tags})")
+
+    def add_template(self):
+        title = simpledialog.askstring("Template", "Template name:")
+        if not title:
+            return
+        tags_str = simpledialog.askstring("Template", "Default tags (comma separated):") or ""
+        tags = [t.strip() for t in tags_str.split(",") if t.strip()]
+        priority = simpledialog.askinteger("Template", "Default priority (1-3):",
+                                           minvalue=1, maxvalue=3, initialvalue=2)
+        if priority is None:
+            priority = 2
+        tmpl = {"title": title, "tags": tags, "priority": priority}
+        self.templates.append(tmpl)
+        self.save_user_data()
+        self.refresh_template_listbox()
+
+    def get_selected_template(self):
+        if not hasattr(self, "template_listbox"):
+            return None
+        sel = self.template_listbox.curselection()
+        if not sel:
+            messagebox.showerror("Error", "No template selected")
+            return None
+        idx = sel[0]
+        if idx < 0 or idx >= len(self.templates):
+            return None
+        return self.templates[idx], idx
+
+    def edit_template(self):
+        res = self.get_selected_template()
+        if not res:
+            return
+        tmpl, idx = res
+        title = simpledialog.askstring("Template", "Template name:", initialvalue=tmpl.get("title", ""))
+        if not title:
+            return
+        tags_str = simpledialog.askstring("Template", "Default tags (comma separated):",
+                                          initialvalue=", ".join(tmpl.get("tags", []))) or ""
+        tags = [t.strip() for t in tags_str.split(",") if t.strip()]
+        priority = simpledialog.askinteger("Template", "Default priority (1-3):",
+                                           minvalue=1, maxvalue=3,
+                                           initialvalue=tmpl.get("priority", 2))
+        if priority is None:
+            priority = tmpl.get("priority", 2)
+        tmpl["title"] = title
+        tmpl["tags"] = tags
+        tmpl["priority"] = priority
+        self.templates[idx] = tmpl
+        self.save_user_data()
+        self.refresh_template_listbox()
+
+    def delete_template(self):
+        res = self.get_selected_template()
+        if not res:
+            return
+        tmpl, idx = res
+        if messagebox.askyesno("Delete", f"Delete template '{tmpl.get('title','')}'?"):
+            del self.templates[idx]
+            self.save_user_data()
+            self.refresh_template_listbox()
+
+    def use_template(self):
+        res = self.get_selected_template()
+        if not res:
+            return
+        tmpl, _ = res
+        self.add_task_dialog(template=tmpl)
+
     def check_easter_egg(self, task):
-        t = task.title.strip().upper()
-        if t == "AOITODO" and task.due_date == "2024-09-23":
+        title_upper = task.title.strip().upper()
+
+        if title_upper == "AOITODO" and task.due_date == "2024-09-23":
             try:
-                img = Image.open("todo.png").resize((300, 300))
+                img = Image.open("todo.png")
+                img = img.resize((300, 300))
                 img_tk = ImageTk.PhotoImage(img)
                 win = tk.Toplevel(self.root)
                 win.title("Aoi Todo Easter Egg")
-                bg = "#1e1e1e" if self.theme in ("dark", "wallpaper", "watermark") else "#f5f5f5"
+                bg = "#1e1e1e" if self.theme in ("dark", "wallpaper") else "#f5f5f5"
                 win.configure(bg=bg)
                 lbl = tk.Label(win, image=img_tk, bg=bg)
                 lbl.image = img_tk
                 lbl.pack(padx=20, pady=20)
             except Exception as e:
                 messagebox.showerror("Error", f"Easter egg image not found.\n{e}")
-        if t == "VILTRUMITE":
-            self.show_conquest_popup(mode="jumpscare")
-        if t == "BLOOD":
-            self.flash_blood_theme()
-        if t == "CONQUEST":
-            self.show_conquest_popup(mode="special")
-        if t == "AOT":
+
+        if title_upper == "VILTRUMITE":
+            self.show_conquest_popup()
+
+        if title_upper == "CONQUEST":
+            self.show_conquest_popup()
+
+        if title_upper == "AOT":
             self.flash_aot()
 
-    def show_conquest_popup(self, mode="normal"):
+    def show_conquest_popup(self):
         img_path = CONQUEST_IMG
-        if mode == "jumpscare" and os.path.exists(CONQUEST_IMG):
-            img_path = CONQUEST_IMG
+
         win = tk.Toplevel(self.root)
         win.title("Conquest")
         win.overrideredirect(True)
+
         win.update_idletasks()
         w, h = 400, 400
-        x = (win.winfo_screenwidth() - w) // 2
-        y = (win.winfo_screenheight() - h) // 2
+        sw = win.winfo_screenwidth()
+        sh = win.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 2
         win.geometry(f"{w}x{h}+{x}+{y}")
-        win.configure(bg="#000000")
+
+        bg = "#000000"
+        win.configure(bg=bg)
+
         try:
-            img = Image.open(img_path).resize((350, 350))
+            img = Image.open(img_path)
+            img = img.resize((350, 350))
             img_tk = ImageTk.PhotoImage(img)
-            lbl = tk.Label(win, image=img_tk, bg="#000000")
+            lbl = tk.Label(win, image=img_tk, bg=bg)
             lbl.image = img_tk
             lbl.pack(padx=10, pady=10)
         except Exception:
-            tk.Label(win, text="CONQUEST", fg="white", bg="#000000",
+            tk.Label(win, text="CONQUEST", fg="white", bg=bg,
                      font=("Segoe UI", 20, "bold")).pack(expand=True)
+
 
         win.after(5000, win.destroy)
 
@@ -669,12 +779,16 @@ class AoiTodoApp:
         win.configure(bg="black")
         win.update_idletasks()
         w, h = 500, 300
-        x = (win.winfo_screenwidth() - w) // 2
-        y = (win.winfo_screenheight() - h) // 2
+        sw = win.winfo_screenwidth()
+        sh = win.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 2
         win.geometry(f"{w}x{h}+{x}+{y}")
+
         if os.path.exists(AOT_FLASH_IMG):
             try:
-                img = Image.open(AOT_FLASH_IMG).resize((w, h))
+                img = Image.open(AOT_FLASH_IMG)
+                img = img.resize((w, h))
                 img_tk = ImageTk.PhotoImage(img)
                 lbl = tk.Label(win, image=img_tk, bg="black")
                 lbl.image = img_tk
@@ -685,6 +799,7 @@ class AoiTodoApp:
         else:
             tk.Label(win, text="AOT", fg="white", bg="black",
                      font=("Segoe UI", 24, "bold")).pack(expand=True)
+
         win.after(1500, win.destroy)
 
 

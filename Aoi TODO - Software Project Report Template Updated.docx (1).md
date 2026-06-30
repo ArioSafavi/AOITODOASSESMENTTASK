@@ -1,5 +1,5 @@
 # SOFTWARE ENGINEERING PROJECT DOCUMENTATION TEMPLATE {#software-engineering-project-documentation-template}
-
+# ALL IMAGES ARE BUGGY AND DIDNT WORK WHEN I DOWNLOADED IT AS A MD FILE SO PLEASE LOOK AT THE PDF FOR THE IMAGES
 ---
 
 ## RATIONALE {#rationale}
@@ -185,8 +185,6 @@ Limitations that affect the project include time constraints and software access
 
 ## 1.7 Requirements Analysis and Prioritisation {#1.7-requirements-analysis-and-prioritisation}
 
-* 
-
 The requirements were analysed based on how important they are to the main goal of the project which is to make a simple and useful todo list for students. The most important requirements were creating tasks, being able to complete tasks and having an easy to use GUI. These were prioritised because without them the program would not work as a todo list. The next important features were things like analytics, notifications and search. These improve the experience but are not required for the program to function. Lower priority features include natural language input and more advanced analytics. These were harder to implement and due to time and skill constraints may not be fully completed. Some trade-offs had to be made because of time and technical knowledge. For example the natural language feature may be simplified and encryption may not be very advanced. Overall all requirements link back to the main problem which is helping students stay organised and making the process more engaging. 
 
 ---
@@ -206,6 +204,8 @@ Python is being used to develop this program as it is what I am best at, it is s
 ---
 
 ## 2.3 Gantt Chart / Timeline {#2.3-gantt-chart-/-timeline}
+
+Most of the time was allocated to the development stage since this project involved a large amount of coding across many different features. Planning and research were given two weeks to make sure the requirements were clear before any code was written. Producing and implementing took up the largest block of time since this is where the actual coding debugging and feature additions happened. Testing and evaluation were scheduled towards the end but overlapped with development towards the end.
 
 ![][image1]
 
@@ -236,6 +236,14 @@ Include a context diagram showing system boundaries and external entities.
 ![][image2]
 
 ---
+
+## 
+
+## 
+
+## 
+
+## 
 
 ## 
 
@@ -303,9 +311,7 @@ Show the modular structure of the system and relationships between modules.
 
 ## 3.6 UML Class Diagram (if OOP) {#3.6-uml-class-diagram-(if-oop)}
 
-Only one class is needed in the project so it is not very complicated. It uses a class to define my tasks as it would be easier to have a blueprint for every task. Most of the attributes are public so that they would be able to be accessed and the functions are set to change values of the task along with a function to remind the user when tasks are due. 
-
-Update I did not know that Tkinter uses classes so i had to redo this
+More than one class is needed for this project. It uses a class to define my tasks as it would be easier to have a blueprint for every task. Most of the attributes are public so that they would be able to be accessed and the functions are set to change values of the task along with a function to remind the user when tasks are due. The other class is used to define the Tkinter app and all of the features of the code sit inside there.
 
 ![][image5]
 
@@ -334,7 +340,8 @@ Tasks are converted to plain dictionaries for storage and rebuilt into objects o
 ---
 
 ## 4.3 Screenshots of Interface {#4.3-screenshots-of-interface}
-# There was a problem with the images in the md file if you want to see them please view them on the pdf
+
+
 Basic login page with a register button a login button an area to input username and password and a theme changer button
 
 Main GUI all actions can be done through here such as viewing tasks, adding tasks, adding tasks through a template, viewing analytics, setting a timer, loggin out, searching for tasks, and changing themes
@@ -432,7 +439,7 @@ Testing inspired me to get rid of advanced analytics as it was getting too close
 
 Although I checked off most of my requirements a couple were neglected such as notifications, I originally planned on adding them and all tasks even have a stored variable of ‘notified’ showing how i was originally planning on adding them but the requirement was cut due to it not working on my macbook and being too hard to create separate macbook and windows versions. Also natural language task creation was not implemented due to complexity issues. I originally coded it in but I realised that it was just as convenient to add tasks the normal way so I ended up scrapping it in the final design. A calendar style due date view was planned but I also removed that due to incompatibility with macbook.
 
-On the non-functional requirements side, performance and reliability are great and the app runs perfectly on my laptop at home and has not crashed or slowed down during testing. The GUI is simple and very user friendly for someone who isn't very tech knowledgeable. Security works fine for a personal project and prevents anyone from accessing the file from the save file but this level of security would not work in an environment where the app stored very sensitive data as the key is hard coded into the file.
+Going back to the non-functional requirements set out in section 1,5 performance held up according to plan as the app runs smoothly on a standard laptop and has not slowed down or crashed during testing meeting the original goal of running on any laptop made after 2010\. Usability is great as the GUI is simple enough for someone who isn't savvy to use without needing instruction which was the original target audience. Reliability has also held up as the app never crashed during testing. Unfortunately security is the weakest feature but still not weak as it cannot be read by any one as a plaintext file or as a json file but can still be decrypted due to the hard coded key in the code.
 
 ---
 
@@ -473,3 +480,35 @@ Along with that I learnt about date and time management in python, working with 
 I learnt about hashing, sha 256 and how xor encryption works which i used to build a basic encryption system for the save file instead of storing everything as plain text. I also learnt how to properly store and structure information in a json file including how to convert custom objects like tasks into dictionaries and bask again so they could be saved and loaded correctly. 
 
 The bugs that I encountered included a task selection bug where deleting a task would select the wrong row if two tasks shared the same title and had no due date which I fixed by checking both the due date and the title instead of just the tile alone. Also ran into issues with older save files breaking when I added new fields like time\_block and notified which is what led me to use default values throughout the task so older data would still load  properly.
+
+# 7:
+
+Code snippets:
+
+Encryption system:
+
+```py
+def _keystream(length: int):
+    # builds a repeating SHA-256 keystream long enough to XOR against the data
+    stream = b""
+    counter = 0
+    while len(stream) < length:
+        h = hashlib.sha256(SECRET_KEY + counter.to_bytes(4, "big")).digest()
+        stream += h
+        counter += 1
+    return stream[:length]
+
+
+def encrypt(data: str) -> bytes:
+    raw = data.encode("utf-8")
+    ks = _keystream(len(raw))
+    return bytes(a ^ b for a, b in zip(raw, ks))  # XOR is reversible, same op decrypts
+
+
+def decrypt(data: bytes) -> str:
+    ks = _keystream(len(data))
+    raw = bytes(a ^ b for a, b in zip(data, ks))
+    return raw.decode("utf-8", errors="ignore")
+
+```
+
